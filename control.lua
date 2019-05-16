@@ -51,7 +51,7 @@ local function on_player_selected_area(event)
       event.area.left_top.y == event.area.right_bottom.y then
       return
     end
-
+    -- Find spawners in selection area, mark with flare
     local spawners = surface.find_entities_filtered({
       area = event.area,
       force = "enemy",
@@ -88,6 +88,7 @@ local function on_player_selected_area(event)
         end
       end
     end
+    -- Find worms in selection area, mark with flare
     local turrets = surface.find_entities_filtered({
       area = event.area,
       force = "enemy",
@@ -124,7 +125,7 @@ local function on_player_selected_area(event)
         end
       end
     end
-
+    -- Mark chunks with flare for explorationposition_to_chunk
     local left_top_chunk = position_to_chunk(event.area.left_top)
     local right_bottom_chunk = position_to_chunk(event.area.right_bottom)
     for x = left_top_chunk.x, right_bottom_chunk.x do
