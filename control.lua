@@ -144,6 +144,44 @@ local function on_player_selected_area(event)
       end
     end
 
+    -- Find artillery in selection area, mark flares at max distance
+    local artillery = surface.find_entities_filtered({
+      area = event.area,
+      force = "player",
+      type = {"artillery-turret", "artillery-wagon"},
+    })
+    if artillery ~= nil then
+      -- TODO: Add iterator
+
+      -- get arty range, multiply by bonus, minus 2/3rds of a chunk for accuracy
+      local artillery_range = (game.item_prototypes["artillery-wagon-cannon"].attack_parameters.range) * (1 + game.players[event.player_index].force.artillery_range_modifier) * 2.5 - (2*32/3)
+
+      for _, entity in ipairs(artillery) do
+        local x, y, r = entity.position.x, entity.position.y, artillery_range
+
+        for i = 1, 360 do
+          local angle = i * math.pi / 180
+          local ptx, pty = x + r * math.cos( angle ), y + r * math.sin( angle )
+          -- Mark chunks with flare for exploration
+          local chunk_pos = position_to_chunk({x = ptx, y = pty})
+
+          --log("chunk: " .. chunk_pos.x .. ", ".. chunk_pos.y)
+
+          if not force.is_chunk_charted(surface, {chunk_pos.x, chunk_pos.y}) then
+            surface.create_entity({
+              name = "artillery-flare",
+              position = {(chunk_pos.x*32) + 16, (chunk_pos.y*32) + 16},
+              force = force,
+              movement = {0, 0},
+              height = 0,
+              vertical_speed = 0,
+              frame_speed = 0,
+            })
+          end
+        end
+      end
+    end
+
     if count > target_limit then
       game.players[event.player_index].print({"artillery-bombardment-remote.shot_limit_reached", target_limit})
     end
