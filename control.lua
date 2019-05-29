@@ -546,43 +546,53 @@ script.on_configuration_changed(on_configuration_changed)
 
 local function on_nth_tick()
     -- on_tick handler for iterating over artillery turrets to mark max distance flares
+    -- currently limited to 3 points every 5 ticks to reduce UPS loss
+    -- currently processes the first chunk id in the available chunks list
+    if next(global.fabr.chunks) ~= nil then
+        local chunkid, data = next(global.fabr.chunks)
+        --log(serpent.block(chunkid))
+        --log(serpent.block(data))
+
+        local chunk_pos_x, chunk_pos_y = chunkid_to_chunk_position(chunkid)
+        local surface = data.surface
+        local force = data.force
+        -- limited to 3 calculations per 5 ticks
+        for i = data.i, data.i + 3 do
+            -- get angle
+            local angle = i * math.pi / 180
+            -- get co-ordinates
+            local ptx = chunk_pos_x + data.artillery_range * math.cos(angle)
+            local pty = chunk_pos_y + data.artillery_range * math.sin(angle)
+            -- get chunk at that position
+            local attack_chunk_pos = position_to_chunk({x = ptx, y = pty})
+            -- check if charted
+            if not force.is_chunk_charted(surface, {attack_chunk_pos.x, attack_chunk_pos.y}) then
+                --log(serpent.block(attack_chunk_pos))
+                -- Mark chunks with flare for exploration
+                surface.create_entity(
+                    {
+                        name = 'artillery-flare',
+                        position = {(attack_chunk_pos.x * 32) + 16, (attack_chunk_pos.y * 32) + 16},
+                        force = force,
+                        movement = {0, 0},
+                        height = 0,
+                        vertical_speed = 0,
+                        frame_speed = 0
+                    }
+                )
+            end
+        end
+        -- remove finished artillery positions
+        if data.i + 1 >= 360 then
+            data = nil
+            global.fabr.chunks[chunkid] = nil
+        else
+            data.i = data.i + 3
+        end
+    end
+
     if global.fabr.chunks ~= nil then
         for chunkid, data in pairs(global.fabr.chunks) do
-            local chunk_pos_x, chunk_pos_y = chunkid_to_chunk_position(chunkid)
-            local surface = data.surface
-            local force = data.force
-            -- limited to 4 calculations per 5 ticks
-            for i = data.i, data.i + 3 do
-                -- get angle
-                local angle = i * math.pi / 180
-                -- get co-ordinates
-                local ptx = chunk_pos_x + data.artillery_range * math.cos(angle)
-                local pty = chunk_pos_y + data.artillery_range * math.sin(angle)
-                -- get chunk at that position
-                local attack_chunk_pos = position_to_chunk({x = ptx, y = pty})
-                -- check if charted
-                if not force.is_chunk_charted(surface, {attack_chunk_pos.x, attack_chunk_pos.y}) then
-                    log(serpent.block(attack_chunk_pos))
-                    -- Mark chunks with flare for exploration
-                    surface.create_entity(
-                        {
-                            name = 'artillery-flare',
-                            position = {(attack_chunk_pos.x * 32) + 16, (attack_chunk_pos.y * 32) + 16},
-                            force = force,
-                            movement = {0, 0},
-                            height = 0,
-                            vertical_speed = 0,
-                            frame_speed = 0
-                        }
-                    )
-                end
-            end
-            -- remove finished artillery positions
-            if data.i + 1 >= 360 then
-                global.fabr.chunks[chunkid] = nil
-            else
-                global.fabr.chunks[chunkid].i = data.i + 1
-            end
         end
     end
 end
